@@ -33,13 +33,10 @@ func NewModel(c anyvec.Creator, knowledgeSize int) *Model {
 	convCode := `
 	Input(w=54, h=54, d=1)
 	Conv(w=3, h=3, n=8, sx=2, sy=2)
-	BatchNorm
 	ReLU
 	Conv(w=3, h=3, n=16, sx=2, sy=2)
-	BatchNorm
 	ReLU
 	Conv(w=3, h=3, n=32, sx=2, sy=2)
-	BatchNorm
 	ReLU
 	FC(out=128)
 	Tanh
