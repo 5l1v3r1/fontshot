@@ -58,6 +58,25 @@ func ReadSamples(path string) (samples []*Sample, err error) {
 	return
 }
 
+// Partition partitions a list of samples into a training
+// and validation set.
+// The validationRunes string contains a rune for every
+// validation label.
+func Partition(in []*Sample, validationRunes string) (validation, training []*Sample) {
+	vSet := map[rune]bool{}
+	for _, x := range validationRunes {
+		vSet[x] = true
+	}
+	for _, sample := range in {
+		if vSet[sample.Label] {
+			validation = append(validation, sample)
+		} else {
+			training = append(training, sample)
+		}
+	}
+	return
+}
+
 func listImages(path string, dest *[]*Sample) error {
 	listing, err := ioutil.ReadDir(path)
 	if err != nil {

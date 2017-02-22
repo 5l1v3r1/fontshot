@@ -3,6 +3,8 @@ package fontshot
 import (
 	"github.com/unixpickle/anydiff"
 	"github.com/unixpickle/anynet"
+	"github.com/unixpickle/anynet/anyconv"
+	"github.com/unixpickle/anyvec"
 	"github.com/unixpickle/essentials"
 	"github.com/unixpickle/serializer"
 )
@@ -18,12 +20,54 @@ type Model struct {
 	// knowledge vector as output.
 	// Knowledge vectors are averaged before being fed to
 	// the classifier.
-	Learner anynet.Net
+	Learner anynet.Layer
 
 	// Mix learned+input pairs for Classifier.
 	Mixer anynet.Mixer
 
-	Classifier anynet.Net
+	Classifier anynet.Layer
+}
+
+// NewModel creates a new, untrained Model.
+func NewModel(c anyvec.Creator, knowledgeSize int) *Model {
+	convCode := `
+	Input(w=54, h=54, d=1)
+	Conv(w=3, h=3, n=8, sx=2, sy=2)
+	BatchNorm
+	ReLU
+	Conv(w=3, h=3, n=16, sx=2, sy=2)
+	BatchNorm
+	ReLU
+	Conv(w=3, h=3, n=32, sx=2, sy=2)
+	BatchNorm
+	ReLU
+	FC(out=128)
+	Tanh
+	`
+	learnerLayer, err := anyconv.FromMarkup(c, convCode)
+	if err != nil {
+		panic(err)
+	}
+	mixerLayer, err := anyconv.FromMarkup(c, convCode)
+	if err != nil {
+		panic(err)
+	}
+	return &Model{
+		Learner: append(learnerLayer.(anynet.Net),
+			anynet.NewFC(c, 128, knowledgeSize)),
+		Mixer: &anynet.AddMixer{
+			In1: anynet.Net{
+				anynet.NewFC(c, knowledgeSize, 128),
+				anynet.Tanh,
+			},
+			In2: mixerLayer,
+			Out: anynet.Net{
+				anynet.Tanh,
+				anynet.NewFC(c, 128, 128),
+			},
+		},
+		Classifier: anynet.NewFC(c, 128, 1),
+	}
 }
 
 // DeserializeModel deserializes a Model.
