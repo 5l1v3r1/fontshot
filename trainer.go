@@ -1,7 +1,6 @@
 package fontshot
 
 import (
-	"fmt"
 	"math/rand"
 
 	"github.com/unixpickle/anydiff"
@@ -67,7 +66,6 @@ func (t *Trainer) Fetch(s anysgd.SampleList) (batch anysgd.Batch, err error) {
 // TotalCost computes the average cost over the batch.
 func (t *Trainer) TotalCost(b *Batch) anydiff.Res {
 	outs := t.Model.Apply(b.Examples, b.Inputs, b.N)
-	fmt.Println(outs.Output())
 	costFunc := anynet.SigmoidCE{Average: true}
 	cost := costFunc.Cost(b.Outputs, outs, 1)
 	return cost
