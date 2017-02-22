@@ -91,12 +91,7 @@ func (t *Trainer) randomClass() rune {
 }
 
 func (t *Trainer) randomExamples(class rune) []*Sample {
-	options := []*Sample{}
-	for _, x := range t.Samples {
-		if x.Label == class {
-			options = append(options, x)
-		}
-	}
+	options := t.samplesInClass(class)
 	res := []*Sample{}
 	for _, i := range rand.Perm(len(options))[:t.NumExamples] {
 		res = append(res, options[i])
@@ -104,17 +99,39 @@ func (t *Trainer) randomExamples(class rune) []*Sample {
 	return res
 }
 
+func (t *Trainer) samplesInClass(class rune) []*Sample {
+	return t.samplesForCond(func(s *Sample) bool {
+		return s.Label == class
+	})
+}
+
 func (t *Trainer) randomInputs(class rune, num int) (inputs []*Sample, outputs []float64) {
-	for _, i := range rand.Perm(len(t.Samples))[:num] {
-		s := t.Samples[i]
-		if s.Label == class {
-			outputs = append(outputs, 1)
-		} else {
+	inClass := t.samplesInClass(class)
+	outClass := t.samplesForCond(func(s *Sample) bool {
+		return s.Label != class
+	})
+	for i := 0; i < num; i++ {
+		var s *Sample
+		if rand.Intn(2) == 0 {
+			s = outClass[rand.Intn(len(outClass))]
 			outputs = append(outputs, 0)
+		} else {
+			outputs = append(outputs, 1)
+			s = inClass[rand.Intn(len(inClass))]
 		}
 		inputs = append(inputs, s)
 	}
 	return
+}
+
+func (t *Trainer) samplesForCond(f func(s *Sample) bool) []*Sample {
+	res := []*Sample{}
+	for _, x := range t.Samples {
+		if f(x) {
+			res = append(res, x)
+		}
+	}
+	return res
 }
 
 func packedSamples(c anyvec.Creator, samples []*Sample) (*anydiff.Const, error) {
