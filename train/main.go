@@ -19,15 +19,13 @@ func main() {
 	var validation string
 	var stepSize float64
 	var batchSize int
-	var numExamples int
 	var knowledgeSize int
 
 	flag.StringVar(&modelPath, "model", "model_out", "model file")
 	flag.StringVar(&sampleDir, "samples", "", "sample directory")
 	flag.StringVar(&validation, "validation", "aBcD94", "validation runes")
 	flag.Float64Var(&stepSize, "step", 0.001, "step size")
-	flag.IntVar(&batchSize, "batch", 64, "inputs per example set")
-	flag.IntVar(&numExamples, "examples", 3, "number of examples per set")
+	flag.IntVar(&batchSize, "batch", 64, "number of sets per batch")
 	flag.IntVar(&knowledgeSize, "knowledge", 16, "size of learned knowledge vectors")
 
 	flag.Parse()
@@ -52,9 +50,8 @@ func main() {
 	}
 
 	tr := &fontshot.Trainer{
-		Model:       model,
-		NumExamples: numExamples,
-		Samples:     trainSet,
+		Model:   model,
+		Samples: trainSet,
 	}
 
 	var iter int
