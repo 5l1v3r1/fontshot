@@ -56,6 +56,17 @@ func (m *Model) Apply(examples, inputs anydiff.Res, numExample, numInputs int) a
 	return m.Classifier.Apply(mixed, numInputs)
 }
 
+// Parameters returns all the parameters of the model.
+func (m *Model) Parameters() []*anydiff.Var {
+	var res []*anydiff.Var
+	for _, x := range []interface{}{m.Learner, m.Mixer, m.Classifier} {
+		if p, ok := x.(anynet.Parameterizer); ok {
+			res = append(res, p.Parameters()...)
+		}
+	}
+	return res
+}
+
 // SerializerType returns the unique ID used to serialize
 // a Model with the serializer package.
 func (m *Model) SerializerType() string {
