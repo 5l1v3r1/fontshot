@@ -4,6 +4,8 @@ import (
 	"flag"
 	"log"
 
+	"github.com/unixpickle/anynet"
+	"github.com/unixpickle/anynet/anyff"
 	"github.com/unixpickle/anynet/anysgd"
 	"github.com/unixpickle/anyvec"
 	"github.com/unixpickle/anyvec/anyvec32"
@@ -20,6 +22,7 @@ func main() {
 	var stepSize float64
 	var batchSize int
 	var knowledgeSize int
+	var pretrain bool
 
 	flag.StringVar(&modelPath, "model", "model_out", "model file")
 	flag.StringVar(&sampleDir, "samples", "", "sample directory")
@@ -27,6 +30,7 @@ func main() {
 	flag.Float64Var(&stepSize, "step", 0.001, "step size")
 	flag.IntVar(&batchSize, "batch", 64, "number of sets per batch")
 	flag.IntVar(&knowledgeSize, "knowledge", 16, "size of learned knowledge vectors")
+	flag.BoolVar(&pretrain, "pretrain", false, "train on classification")
 
 	flag.Parse()
 
@@ -49,6 +53,19 @@ func main() {
 		log.Println("Loaded model.")
 	}
 
+	if pretrain {
+		trainClassifier(model, trainSet, stepSize, batchSize)
+	} else {
+		train(model, validSet, trainSet, stepSize, batchSize)
+	}
+
+	if err := serializer.SaveAny(modelPath, model); err != nil {
+		essentials.Die(err)
+	}
+}
+
+func train(model *fontshot.Model, validSet, trainSet []*fontshot.Sample,
+	stepSize float64, batchSize int) {
 	tr := &fontshot.Trainer{
 		Model:   model,
 		Samples: trainSet,
@@ -77,8 +94,35 @@ func main() {
 	if err := sgd.Run(rip.NewRIP().Chan()); err != nil {
 		essentials.Die(err)
 	}
+}
 
-	if err := serializer.SaveAny(modelPath, model); err != nil {
+func trainClassifier(model *fontshot.Model, trainSet []*fontshot.Sample,
+	stepSize float64, batchSize int) {
+	samples := fontshot.NewPretrainSamples(trainSet)
+	learner := model.Learner.(anynet.Net)
+	classifier := append(append(anynet.Net{}, learner[:len(learner)-1]),
+		anynet.NewFC(anyvec32.CurrentCreator(), 128, len(samples.ClassMap())),
+		anynet.LogSoftmax)
+	log.Println("Training with", len(samples.ClassMap()), "classes...")
+	tr := &anyff.Trainer{
+		Net:     classifier,
+		Cost:    anynet.DotCost{},
+		Params:  classifier.Parameters(),
+		Average: true,
+	}
+	var iter int
+	sgd := &anysgd.SGD{
+		Fetcher:    tr,
+		Gradienter: tr,
+		Samples:    samples,
+		BatchSize:  batchSize,
+		Rater:      anysgd.ConstRater(stepSize),
+		StatusFunc: func(b anysgd.Batch) {
+			log.Printf("iter %d: cost=%v", iter, tr.LastCost)
+			iter++
+		},
+	}
+	if err := sgd.Run(rip.NewRIP().Chan()); err != nil {
 		essentials.Die(err)
 	}
 }
