@@ -128,5 +128,5 @@ func trainClassifier(model *fontshot.Model, trainSet []*fontshot.Sample,
 
 	// Use the pre-trained knowledge for the classifier as
 	// well as for the learner.
-	copy(model.Mixer.(*anynet.AddMixer).In2.(anynet.Net), classifier)
+	copy(model.Mixer.(*anynet.AddMixer).In2.(anynet.Net), classifier[:len(classifier)-2])
 }

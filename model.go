@@ -57,9 +57,9 @@ func NewModel(c anyvec.Creator, knowledgeSize int) *Model {
 		Mixer: &anynet.AddMixer{
 			In1: anynet.Net{
 				anynet.NewFC(c, knowledgeSize, 128),
-				anynet.Tanh,
 			},
-			In2: mixerLayer,
+			In2: append(mixerLayer.(anynet.Net),
+				anynet.NewFC(c, 128, 128)),
 			Out: anynet.Net{
 				anynet.Tanh,
 				anynet.NewFC(c, 128, 128),
