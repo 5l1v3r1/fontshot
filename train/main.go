@@ -100,7 +100,7 @@ func trainClassifier(model *fontshot.Model, trainSet []*fontshot.Sample,
 	stepSize float64, batchSize int) {
 	samples := fontshot.NewPretrainSamples(trainSet)
 	learner := model.Learner.(anynet.Net)
-	classifier := append(append(anynet.Net{}, learner[:len(learner)-1]),
+	classifier := append(append(anynet.Net{}, learner[:len(learner)-1]...),
 		anynet.NewFC(anyvec32.CurrentCreator(), 128, len(samples.ClassMap())),
 		anynet.LogSoftmax)
 	log.Println("Training with", len(samples.ClassMap()), "classes...")
@@ -125,4 +125,8 @@ func trainClassifier(model *fontshot.Model, trainSet []*fontshot.Sample,
 	if err := sgd.Run(rip.NewRIP().Chan()); err != nil {
 		essentials.Die(err)
 	}
+
+	// Use the pre-trained knowledge for the classifier as
+	// well as for the learner.
+	copy(model.Mixer.(*anynet.AddMixer).In2.(anynet.Net), classifier)
 }
