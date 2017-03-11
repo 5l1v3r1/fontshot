@@ -63,7 +63,7 @@ func (p *PretrainSamples) GetSample(idx int) (*anyff.Sample, error) {
 	outVec := make([]float32, len(cm))
 	outVec[cm[p.samples[idx].Label]] = 1
 
-	in, err := vectorForSample(anyvec32.CurrentCreator(), p.samples[idx])
+	in, err := vectorForSample(anyvec32.CurrentCreator(), p.samples[idx], 0)
 	if err != nil {
 		return nil, err
 	}

@@ -93,7 +93,7 @@ func listImages(path string, dest *[]*Sample) error {
 	return nil
 }
 
-func vectorForSample(c anyvec.Creator, s *Sample) (anyvec.Vector, error) {
+func vectorForSample(c anyvec.Creator, s *Sample, angle int) (anyvec.Vector, error) {
 	r, err := os.Open(s.ImagePath)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,20 @@ func vectorForSample(c anyvec.Creator, s *Sample) (anyvec.Vector, error) {
 	buf := make([]float64, 0, ImageSize*ImageSize)
 	for y := 0; y < ImageSize; y++ {
 		for x := 0; x < ImageSize; x++ {
-			_, _, _, a := img.At(x, y).RGBA()
+			var rawX, rawY int
+			switch angle {
+			case 0:
+				rawX, rawY = x, y
+			case 1:
+				rawY, rawX = x, ImageSize-(y+1)
+			case 2:
+				rawX, rawY = ImageSize-(x+1), ImageSize-(y+1)
+			case 3:
+				rawX, rawY = y, ImageSize-(x+1)
+			default:
+				panic("bad angle")
+			}
+			_, _, _, a := img.At(rawX, rawY).RGBA()
 			buf = append(buf, float64(a)/0xffff)
 		}
 	}

@@ -34,8 +34,8 @@ type Trainer struct {
 func (t *Trainer) Fetch(s anysgd.SampleList) (batch anysgd.Batch, err error) {
 	defer essentials.AddCtxTo("fetch samples", &err)
 
-	var examples []*Sample
-	var inputs []*Sample
+	var examples []angledSample
+	var inputs []angledSample
 	var outputs []float64
 
 	for i := 0; i < s.Len(); i++ {
@@ -85,7 +85,7 @@ func (t *Trainer) Gradient(b anysgd.Batch) anydiff.Grad {
 	return res
 }
 
-func (t *Trainer) randomClass() rune {
+func (t *Trainer) randomClass() angledClass {
 	present := map[rune]bool{}
 	classes := []rune{}
 	for _, x := range t.Samples {
@@ -94,49 +94,69 @@ func (t *Trainer) randomClass() rune {
 			classes = append(classes, x.Label)
 		}
 	}
-	return classes[rand.Intn(len(classes))]
+	return angledClass{
+		Char:  classes[rand.Intn(len(classes))],
+		Angle: rand.Intn(4),
+	}
 }
 
-func (t *Trainer) randomExample(class rune) *Sample {
+func (t *Trainer) randomExample(class angledClass) angledSample {
 	options := t.samplesInClass(class)
 	return options[rand.Intn(len(options))]
 }
 
-func (t *Trainer) randomInput(class rune) (*Sample, float64) {
+func (t *Trainer) randomInput(class angledClass) (angledSample, float64) {
 	if rand.Intn(2) == 1 {
 		return t.randomExample(class), 1
 	} else {
-		s := t.samplesForCond(func(x *Sample) bool {
-			return x.Label != class
-		})
+		s := t.samplesNotInClass(class)
 		return s[rand.Intn(len(s))], 0
 	}
 }
 
-func (t *Trainer) samplesInClass(class rune) []*Sample {
-	return t.samplesForCond(func(s *Sample) bool {
-		return s.Label == class
+func (t *Trainer) samplesInClass(class angledClass) []angledSample {
+	return t.samplesForCond(func(a angledSample) bool {
+		return a.Sample.Label == class.Char && a.Angle == a.Angle
 	})
 }
 
-func (t *Trainer) samplesForCond(f func(s *Sample) bool) []*Sample {
-	res := []*Sample{}
+func (t *Trainer) samplesNotInClass(class angledClass) []angledSample {
+	return t.samplesForCond(func(a angledSample) bool {
+		return a.Sample.Label != class.Char || a.Angle != a.Angle
+	})
+}
+
+func (t *Trainer) samplesForCond(f func(s angledSample) bool) []angledSample {
+	res := []angledSample{}
 	for _, x := range t.Samples {
-		if f(x) {
-			res = append(res, x)
+		for _, angle := range []int{0, 1, 2, 3} {
+			s := angledSample{Sample: x, Angle: angle}
+			if f(s) {
+				res = append(res, s)
+			}
 		}
 	}
 	return res
 }
 
-func packedSamples(c anyvec.Creator, samples []*Sample) (*anydiff.Const, error) {
+func packedSamples(c anyvec.Creator, samples []angledSample) (*anydiff.Const, error) {
 	var parts []anyvec.Vector
 	for _, x := range samples {
-		vec, err := vectorForSample(c, x)
+		vec, err := vectorForSample(c, x.Sample, x.Angle)
 		if err != nil {
 			return nil, err
 		}
 		parts = append(parts, vec)
 	}
 	return anydiff.NewConst(c.Concat(parts...)), nil
+}
+
+type angledSample struct {
+	Sample *Sample
+	Angle  int
+}
+
+type angledClass struct {
+	Char  rune
+	Angle int
 }
